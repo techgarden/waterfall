@@ -12,7 +12,7 @@ class Schedule {
 public:
   Schedule(unsigned int address);
   void fetch();
-  WaterRule get(Day day);
+  WaterRule& get(Day day);
   unsigned int store();
   unsigned int storeDay(Day day);
 };

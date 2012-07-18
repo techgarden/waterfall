@@ -24,10 +24,8 @@ unsigned int WaterRule::store(unsigned int address) {
 }
 
 void WaterRule::fetch(unsigned int address) {
-  hour = EEPROM.read(address);
-  address++;
-  minute = EEPROM.read(address);
-  address++;
+  hour = EEPROM.read(address++);
+  minute = EEPROM.read(address++);
   duration = EEPROM.read(address);
 }
 

@@ -18,7 +18,7 @@ void Schedule::fetch() {
   }
 }
 
-WaterRule Schedule::get(Day day) {
+WaterRule& Schedule::get(Day day) {
   return rules[day];
 }
 

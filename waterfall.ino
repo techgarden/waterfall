@@ -4,6 +4,8 @@
 #include <Time.h>
 #include <TimeAlarms.h>
 #include <stdlib.h>
+#include <EEPROM.h>
+#include "Schedule.h"
 
 #define BTN    2
 
@@ -32,6 +34,8 @@ static char strbuf[STR_BUFFER_SIZE+1];
 EtherShield es = EtherShield();
 DHT dht(DHTPIN, DHTTYPE);
 LiquidCrystal lcd(LCD_RS, LCD_EN, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
+Schedule schedule(0);
+
 long last_lcd_backlight = 0
    , last_sensor_update = 0;
 
@@ -49,8 +53,7 @@ void stop_watering() {
 }
 
 void setup() {
-  Serial.begin(9600);
-  
+  schedule.fetch();
   pinMode(A5, OUTPUT);
   digitalWrite(A5, LOW);
   // initialize enc28j60
