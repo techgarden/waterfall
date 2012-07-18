@@ -7,6 +7,7 @@ class WaterRule {
   byte hour;
   byte minute;
   byte duration;
+  byte enabled;
 public:
   WaterRule();
   WaterRule(byte h, byte m, byte d);
@@ -16,6 +17,9 @@ public:
   byte getHour();
   byte getMinute();
   byte getDuration();
+  String toString();
+  byte isEnabled();
+  void setEnabled(byte enabled);
 };
 
 #endif

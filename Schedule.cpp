@@ -25,3 +25,18 @@ WaterRule& Schedule::get(Day day) {
 unsigned int Schedule::storeDay(Day day) {
   return rules[day].store(day * sizeof(WaterRule));
 }
+
+String Schedule::toString() {
+  String str = "";
+  for (byte i = 0; i < NUMOFDAYS; i++) {
+    WaterRule& rule = rules[i];
+    str += String("Day ") + i + String(" ");
+    if (rule.isEnabled()) {
+      str += rule.toString() + "\n";
+    }
+    else {
+      str += " not enabled\n";
+    }
+  }
+  return str;
+}

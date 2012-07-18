@@ -15,6 +15,7 @@ public:
   WaterRule& get(Day day);
   unsigned int store();
   unsigned int storeDay(Day day);
+  String toString();
 };
 
 #endif

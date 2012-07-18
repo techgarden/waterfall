@@ -53,6 +53,7 @@ void stop_watering() {
 }
 
 void setup() {
+  Serial.begin(9600);
   schedule.fetch();
   pinMode(A5, OUTPUT);
   digitalWrite(A5, LOW);
@@ -164,6 +165,16 @@ int parseTime(char *time_buf, int *hour, int *min, int *sec) {
   return 1;
 }
 
+uint16_t writeStrToBuf(char* from, uint8_t* to, uint16_t plen) {
+  int i = 0;
+  while (from[i]) {
+      to[TCP_CHECKSUM_L_P + 3 + plen] = from[i++];
+      plen++;
+  }
+  Serial.println(i);
+  return plen;
+}
+
 void loop() {
   //digitalClockDisplay();
   Alarm.delay(0); 
@@ -244,18 +255,14 @@ void loop() {
               digits(second(), secs);
               sprintf(itoa_buf, "Temp: %d\nHumi: %d\n%s:%s:%s", (int)t, (int)h, hours, mins, secs);
               plen = es.ES_fill_tcp_data_p(buf, 0, PSTR(""));
-              int i = 0;
-              while (itoa_buf[i]) {
-                  buf[TCP_CHECKSUM_L_P + 3 + plen] = itoa_buf[i++];
-                  plen++;
-              }
+              plen = writeStrToBuf(itoa_buf, buf, plen);
               plen = es.ES_fill_tcp_data_p(buf, plen, PSTR("\n"));
           }
-          else if (strncmp("start watering", (char *)&(buf[dat_p]), 5) == 0) {
+          else if (strncmp("start watering", (char *)&(buf[dat_p]), 14) == 0) {
             digitalWrite(A5, HIGH);
             plen = es.ES_fill_tcp_data_p(buf, 0, PSTR("better hold on to your umbrella!\n"));
           }
-          else if (strncmp("stop watering", (char *)&(buf[dat_p]), 5) == 0) {
+          else if (strncmp("stop watering", (char *)&(buf[dat_p]), 13) == 0) {
             digitalWrite(A5, LOW);
             plen = es.ES_fill_tcp_data_p(buf, 0, PSTR("look at the rainbow!\n"));
           }
@@ -263,7 +270,7 @@ void loop() {
             char *time_buf = (char *)&(buf[dat_p+9]);
             Serial.println(time_buf);
             int hour, min, sec;
-            if(parseTime(time_buf, &hour, &min, &sec)) {
+            if (parseTime(time_buf, &hour, &min, &sec)) {
               //sprintf(itoa_buf, "You said:%s?", time_buf);
               digits(hour, hours);
               digits(min, mins);
@@ -276,12 +283,15 @@ void loop() {
               sprintf(itoa_buf, "(INVALID TIME)");
             }
             plen = es.ES_fill_tcp_data_p(buf, 0, PSTR(""));
-            int i = 0;
-            while (itoa_buf[i]) {
-                buf[TCP_CHECKSUM_L_P + 3 + plen] = itoa_buf[i++];
-                plen++;
-            }
+            plen = writeStrToBuf(itoa_buf, buf, plen);
             plen = es.ES_fill_tcp_data_p(buf, plen, PSTR("\n"));
+          }
+          else if (strncmp("schedules", (char *)&(buf[dat_p]), 9) == 0) {
+            String scheduleStr = schedule.toString();
+            Serial.println(scheduleStr);
+            scheduleStr.toCharArray(itoa_buf, 100);
+            plen = es.ES_fill_tcp_data_p(buf, 0, PSTR(""));
+            plen = writeStrToBuf(itoa_buf, buf, plen);
           }
           else if (strncmp("exit", (char *)&(buf[dat_p]), 4) == 0) {
             plen = es.ES_fill_tcp_data_p(buf, 0, PSTR("goodbye  ;)\n"));
