@@ -12,6 +12,12 @@ unsigned int Schedule::store() {
   return address;
 }
 
+void Schedule::fetch() {
+  for (byte i = 0; i < NUMOFDAYS; i++) {
+    rules[i].fetch(i * sizeof(WaterRule));
+  }
+}
+
 WaterRule Schedule::get(Day day) {
   return rules[day];
 }

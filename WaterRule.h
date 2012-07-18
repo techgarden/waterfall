@@ -3,19 +3,19 @@
 
 #include "Arduino.h"
 
-typedef uint8_t Hour;
-typedef uint8_t Minute;
-typedef uint8_t Duration;
-
 class WaterRule {
-  Hour hour;
-  Minute minute;
-  Duration duration;
+  byte hour;
+  byte minute;
+  byte duration;
 public:
   WaterRule();
-  WaterRule(Hour h, Minute m, Duration d);
-  void set(Hour h, Minute m, Duration d);
+  WaterRule(byte h, byte m, byte d);
+  void set(byte h, byte m, byte d);
   unsigned int store(unsigned int address);
+  void fetch(unsigned int address);
+  byte getHour();
+  byte getMinute();
+  byte getDuration();
 };
 
 #endif
