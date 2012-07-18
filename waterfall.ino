@@ -47,7 +47,7 @@ void stop_watering() {
   digitalWrite(A5, LOW);
 }
 
-void setup() {
+void setup() {  
   Serial.begin(9600);
   
   pinMode(A5, OUTPUT);
@@ -100,11 +100,6 @@ void setup() {
   lcd.print("Humidity       %");
   last_lcd_backlight = millis();
   last_sensor_update = millis();
-  
-  setTime(8,30,0,1,1,11); // set time to Saturday 8:29:00am Jan 1 2011
-  // create the alarms 
-  //Alarm.alarmRepeat(8,30,5, start_watering);  // 8:30am every day
-  //Alarm.alarmRepeat(8,30,10, stop_watering);  // 8:30am every day
 }
 
 float h = -1;
@@ -189,11 +184,8 @@ void loop() {
           if (strncmp("help", (char *)&(buf[dat_p]), 4) == 0) {
               plen = es.ES_fill_tcp_data_p(buf, 0, PSTR("DEN EKEI\n"));
           }
-          else if (strncmp("info", (char *)&(buf[dat_p]), 4) == 0) {              
-              printDigits(hour(), hours);
-              printDigits(minute(), mins);
-              printDigits(second(), secs);
-              sprintf(itoa_buf, "Temp: %d\nHumi: %d\n%s:%s:%s", (int)t, (int)h, hours, mins, secs);
+          else if (strncmp("info", (char *)&(buf[dat_p]), 4) == 0) {
+              sprintf(itoa_buf, "Temp: %d\nHumi: %d", (int)t, (int)h);
               plen = es.ES_fill_tcp_data_p(buf, 0, PSTR(""));
               int i = 0;
               while (itoa_buf[i]) {
@@ -221,5 +213,4 @@ void loop() {
           es.ES_make_tcp_ack_with_data(buf,plen, sendFin);
      }
   }
-  
 }
