@@ -3,6 +3,7 @@
 #include "etherShield.h"
 #include <Time.h>
 #include <TimeAlarms.h>
+#include <stdlib.h>
 
 #define BTN    2
 
@@ -47,7 +48,7 @@ void stop_watering() {
   digitalWrite(A5, LOW);
 }
 
-void setup() {  
+void setup() {
   Serial.begin(9600);
   
   pinMode(A5, OUTPUT);
@@ -100,6 +101,25 @@ void setup() {
   lcd.print("Humidity       %");
   last_lcd_backlight = millis();
   last_sensor_update = millis();
+  
+  setTime(8,30,0,1,1,11); // set time to Saturday 8:29:00am Jan 1 2011
+  // create the alarms 
+  resetAlarms();
+  //Alarm.timerRepeat(15, Repeats);            // timer for every 15 seconds    
+  //Alarm.timerOnce(10, OnceOnly);             // called once after 10 seconds 
+}
+
+void resetAlarms() {
+  Alarm.timerRepeat(5, start_watering);  // 8:30am every day
+  Alarm.timerRepeat(10, stop_watering);  // 8:30am every day  
+}
+
+void Repeats(){
+  Serial.println("15 second timer");         
+}
+
+void OnceOnly(){
+  Serial.println("This timer only triggers once");  
 }
 
 float h = -1;
@@ -107,17 +127,43 @@ float t = -1;
 
 char hours[3], mins[3], secs[3];
 
-void printDigits(int digits, char *buf)
+void digits(int digits, char *buf)
 {
   if(digits < 10)
     sprintf(buf, "0%d", digits);
   else 
-    sprintf(buf, "0%d", digits);
+    sprintf(buf, "%d", digits);
+}
+
+/**
+ *  parses time from a string and converts it to time_t
+ */
+int parseTime(char *time_buf, int *hour, int *min, int *sec) {
+  int sz = strlen(time_buf); 
+  int i;
+  *hour = 0;
+  *min = 0;
+  *sec = 0;
+  //if(sz != 8) return -1;
+  //errno = 0; /* To distinguish success/failure after call */
+  //*hour = (int)strtol(time_buf, NULL, 10);
+  //if ((errno == ERANGE && (*hour == LONG_MAX || *hour == LONG_MIN)) || (errno != 0 && *hour == 0)) return -1;
+  //errno = 0; /* To distinguish success/failure after call */
+  //*min = (int)strtol(time_buf+3, NULL, 10);
+  //if ((errno == ERANGE && (*min == LONG_MAX || *min == LONG_MIN)) || (errno != 0 && *min == 0)) return -1;
+  //*sec = (int)strtol(time_buf+6, NULL, 10);
+  //errno = 0; /* To distinguish success/failure after call */
+  //if ((errno == ERANGE && (*sec == LONG_MAX || *sec == LONG_MIN)) || (errno != 0 && *sec == 0)) return -1;
+  *hour = atoi(time_buf);
+  *min = atoi(time_buf+3);
+  *sec = atoi(time_buf+6);
+  //FIXME: check for bad time format, syntax errors etc
+  return 1;
 }
 
 void loop() {
   //digitalClockDisplay();
-  //Alarm.delay(1000); 
+  Alarm.delay(0); 
   if ((millis() - last_lcd_backlight) > 5000) {
     digitalWrite(LCD_BL, LOW);
   }
@@ -182,10 +228,18 @@ void loop() {
               return;
           }
           if (strncmp("help", (char *)&(buf[dat_p]), 4) == 0) {
-              plen = es.ES_fill_tcp_data_p(buf, 0, PSTR("DEN EKEI\n"));
+              plen = es.ES_fill_tcp_data_p(buf, 0, PSTR("\
+               info              : get temperature and time information\n \
+              start watering    : open water valve\n \
+              stop watering     : close water valve\n \
+              set time xx:xx:xx : set system time\n \
+              exit              : exit telnet connection\n"));
           }
-          else if (strncmp("info", (char *)&(buf[dat_p]), 4) == 0) {
-              sprintf(itoa_buf, "Temp: %d\nHumi: %d", (int)t, (int)h);
+          else if (strncmp("info", (char *)&(buf[dat_p]), 4) == 0) {              
+              digits(hour(), hours);
+              digits(minute(), mins);
+              digits(second(), secs);
+              sprintf(itoa_buf, "Temp: %d\nHumi: %d\n%s:%s:%s", (int)t, (int)h, hours, mins, secs);
               plen = es.ES_fill_tcp_data_p(buf, 0, PSTR(""));
               int i = 0;
               while (itoa_buf[i]) {
@@ -194,13 +248,37 @@ void loop() {
               }
               plen = es.ES_fill_tcp_data_p(buf, plen, PSTR("\n"));
           }
-          else if (strncmp("start watering", (char *)&(buf[dat_p]), 4) == 0) {
+          else if (strncmp("start watering", (char *)&(buf[dat_p]), 5) == 0) {
             digitalWrite(A5, HIGH);
             plen = es.ES_fill_tcp_data_p(buf, 0, PSTR("better hold on to your umbrella!\n"));
           }
-          else if (strncmp("stop watering", (char *)&(buf[dat_p]), 4) == 0) {
+          else if (strncmp("stop watering", (char *)&(buf[dat_p]), 5) == 0) {
             digitalWrite(A5, LOW);
             plen = es.ES_fill_tcp_data_p(buf, 0, PSTR("look at the rainbow!\n"));
+          }
+          else if (strncmp("set time", (char *)&(buf[dat_p]), 8) == 0) {
+            char *time_buf = (char *)&(buf[dat_p+9]);
+            Serial.println(time_buf);
+            int hour, min, sec;
+            if(parseTime(time_buf, &hour, &min, &sec)) {
+              //sprintf(itoa_buf, "You said:%s?", time_buf);
+              digits(hour, hours);
+              digits(min, mins);
+              digits(sec, secs);
+              setTime(hour,min,sec,1,1,11); //the data is reset, and wrong ofcourse, but probably no one will ever notice
+              resetAlarms();
+              sprintf(itoa_buf, "Time is set to %s:%s:%s", hours, mins, secs);
+            }
+            else {
+              sprintf(itoa_buf, "(INVALID TIME)");
+            }
+            plen = es.ES_fill_tcp_data_p(buf, 0, PSTR(""));
+            int i = 0;
+            while (itoa_buf[i]) {
+                buf[TCP_CHECKSUM_L_P + 3 + plen] = itoa_buf[i++];
+                plen++;
+            }
+            plen = es.ES_fill_tcp_data_p(buf, plen, PSTR("\n"));
           }
           else if (strncmp("exit", (char *)&(buf[dat_p]), 4) == 0) {
             plen = es.ES_fill_tcp_data_p(buf, 0, PSTR("goodbye  ;)\n"));
@@ -213,4 +291,5 @@ void loop() {
           es.ES_make_tcp_ack_with_data(buf,plen, sendFin);
      }
   }
+  
 }
