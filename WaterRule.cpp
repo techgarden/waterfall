@@ -17,7 +17,7 @@ unsigned int WaterRule::store(unsigned int address) {
   EEPROM.write(address++, hour);
   EEPROM.write(address++, minute);
   EEPROM.write(address++, duration);
-  EEPROM.write(address, enabled);
+  EEPROM.write(address++, enabled);
   return address;
 }
 
@@ -46,10 +46,8 @@ byte WaterRule::getDuration() {
   return duration;
 }
 
-String WaterRule::toString() {
-  String str = "";
-  str += String("set at ") + hour + String(":") + minute + String(" for ") + duration + String(" minutes");
-  return str;
+unsigned int WaterRule::toString(char* buf) {
+  return sprintf(buf, "set at %d:%d, for %d minutes", hour, minute, duration);
 }
 
 byte WaterRule::isEnabled() {

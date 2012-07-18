@@ -1,6 +1,8 @@
 
 #include "Schedule.h"
 
+char* days[] = { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" };
+
 Schedule::Schedule(unsigned int address) {
   this->address = address;
 }
@@ -26,17 +28,17 @@ unsigned int Schedule::storeDay(Day day) {
   return rules[day].store(day * sizeof(WaterRule));
 }
 
-String Schedule::toString() {
-  String str = "";
+void Schedule::toString(char* buf) {
+  unsigned int pos = 0;
   for (byte i = 0; i < NUMOFDAYS; i++) {
     WaterRule& rule = rules[i];
-    str += String("Day ") + i + String(" ");
+    pos += sprintf(&buf[pos], "%s : ", days[i]);
     if (rule.isEnabled()) {
-      str += rule.toString() + "\n";
+      pos += rule.toString(&buf[pos]);
+      pos += sprintf(&buf[pos], "\n");
     }
     else {
-      str += " not enabled\n";
+      pos += sprintf(&buf[pos], "not enabled\n");
     }
   }
-  return str;
 }

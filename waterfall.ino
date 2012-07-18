@@ -26,7 +26,8 @@ static uint8_t myip[4]  = { 192, 168, 1, 15 };
 #define BUFFER_SIZE 500
 static uint8_t buf[BUFFER_SIZE+1];
 
-static char itoa_buf[100];
+#define RESPONSE_BUF 500
+static char responseBuf[RESPONSE_BUF];
 
 #define STR_BUFFER_SIZE 22
 static char strbuf[STR_BUFFER_SIZE+1];
@@ -53,7 +54,6 @@ void stop_watering() {
 }
 
 void setup() {
-  Serial.begin(9600);
   schedule.fetch();
   pinMode(A5, OUTPUT);
   digitalWrite(A5, LOW);
@@ -171,7 +171,6 @@ uint16_t writeStrToBuf(char* from, uint8_t* to, uint16_t plen) {
       to[TCP_CHECKSUM_L_P + 3 + plen] = from[i++];
       plen++;
   }
-  Serial.println(i);
   return plen;
 }
 
@@ -184,6 +183,7 @@ void loop() {
   if ((millis() - last_sensor_update) > 2000) {
     h = dht.readHumidity();
     t = dht.readTemperature();
+    last_sensor_update = millis();
   }
   if (isnan(t) || isnan(h)) {
     // error
@@ -253,9 +253,9 @@ void loop() {
               digits(hour(), hours);
               digits(minute(), mins);
               digits(second(), secs);
-              sprintf(itoa_buf, "Temp: %d\nHumi: %d\n%s:%s:%s", (int)t, (int)h, hours, mins, secs);
+              sprintf(responseBuf, "Temp: %d\nHumi: %d\n%s:%s:%s", (int)t, (int)h, hours, mins, secs);
               plen = es.ES_fill_tcp_data_p(buf, 0, PSTR(""));
-              plen = writeStrToBuf(itoa_buf, buf, plen);
+              plen = writeStrToBuf(responseBuf, buf, plen);
               plen = es.ES_fill_tcp_data_p(buf, plen, PSTR("\n"));
           }
           else if (strncmp("start watering", (char *)&(buf[dat_p]), 14) == 0) {
@@ -268,30 +268,27 @@ void loop() {
           }
           else if (strncmp("set time", (char *)&(buf[dat_p]), 8) == 0) {
             char *time_buf = (char *)&(buf[dat_p+9]);
-            Serial.println(time_buf);
             int hour, min, sec;
             if (parseTime(time_buf, &hour, &min, &sec)) {
-              //sprintf(itoa_buf, "You said:%s?", time_buf);
+              //sprintf(responseBuf, "You said:%s?", time_buf);
               digits(hour, hours);
               digits(min, mins);
               digits(sec, secs);
               setTime(hour,min,sec,1,1,11); //the data is reset, and wrong ofcourse, but probably no one will ever notice
               resetAlarms();
-              sprintf(itoa_buf, "Time is set to %s:%s:%s", hours, mins, secs);
+              sprintf(responseBuf, "Time is set to %s:%s:%s", hours, mins, secs);
             }
             else {
-              sprintf(itoa_buf, "(INVALID TIME)");
+              sprintf(responseBuf, "(INVALID TIME)");
             }
             plen = es.ES_fill_tcp_data_p(buf, 0, PSTR(""));
-            plen = writeStrToBuf(itoa_buf, buf, plen);
+            plen = writeStrToBuf(responseBuf, buf, plen);
             plen = es.ES_fill_tcp_data_p(buf, plen, PSTR("\n"));
           }
           else if (strncmp("schedules", (char *)&(buf[dat_p]), 9) == 0) {
-            String scheduleStr = schedule.toString();
-            Serial.println(scheduleStr);
-            scheduleStr.toCharArray(itoa_buf, 100);
+            schedule.toString(responseBuf);
             plen = es.ES_fill_tcp_data_p(buf, 0, PSTR(""));
-            plen = writeStrToBuf(itoa_buf, buf, plen);
+            plen = writeStrToBuf(responseBuf, buf, plen);
           }
           else if (strncmp("exit", (char *)&(buf[dat_p]), 4) == 0) {
             plen = es.ES_fill_tcp_data_p(buf, 0, PSTR("goodbye  ;)\n"));

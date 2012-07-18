@@ -17,7 +17,7 @@ public:
   byte getHour();
   byte getMinute();
   byte getDuration();
-  String toString();
+  unsigned int toString(char* buf);
   byte isEnabled();
   void setEnabled(byte enabled);
 };
