@@ -290,6 +290,10 @@ void loop() {
             plen = es.ES_fill_tcp_data_p(buf, 0, PSTR(""));
             plen = writeStrToBuf(responseBuf, buf, plen);
           }
+          else if (strncmp("set schedule ", (char*)&(buf[dat_p]), 9) == 0) {
+            char* params = (char *)&(buf[dat_p + 9]);
+            // moar
+          }
           else if (strncmp("exit", (char *)&(buf[dat_p]), 4) == 0) {
             plen = es.ES_fill_tcp_data_p(buf, 0, PSTR("goodbye  ;)\n"));
             sendFin = 1;
