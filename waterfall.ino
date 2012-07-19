@@ -58,7 +58,6 @@ void start_watering() {
 }
 
 void setup() {
-  Serial.begin(9600);
   schedule.fetch();
   pinMode(A5, OUTPUT);
   digitalWrite(A5, LOW);
@@ -111,7 +110,7 @@ void setup() {
   last_lcd_backlight = millis();
   last_sensor_update = millis();
   
-  setTime(9,30,0,14,4,1988); // set time to Saturday 8:29:00am Jan 1 2011
+  setTime(9,30,0,18,7,2012); // set time to Saturday 8:29:00am Jan 1 2011
   // create the alarms 
   resetAlarms();
 }
@@ -130,21 +129,26 @@ timeDayOfWeek_t getTimeDayOfWeek(int day) {
 }
 
 void resetAlarms() { 
-  for(int day=0; day < NUMOFDAYS; day++) {
-    WaterRule rule = schedule.get(day);
+  for(int day = 0; day < 7; day++) {
+    WaterRule& rule = schedule.get(day);
     if(rule.isEnabled()) {
-      //Alarm.alarmRepeat(9, 30,30, start_watering);
-      //Alarm.alarmRepeat(9, 31,0, start_watering);
-      //Alarm.alarmRepeat(getTimeDayOfWeek(day), rule.getHour(), rule.getMinute(), 0, start_watering);
-      //Alarm.alarmRepeat(getTimeDayOfWeek(day), rule.getHour(), rule.getMinute(), 10, stop_watering); //FIXME: make it real
+
     }
-    //Alarm.alarmRepeat(getTimeDayOfWeek(day), hour(), minute(), second()+5, start_watering);
-    //Alarm.alarmRepeat(getTimeDayOfWeek(day), hour(), minute(), second()+10, stop_watering);
+    //Alarm.alarmRepeat(getTimeDayOfWeek(day), hour(), minute(), second()+2, start_watering);
   }
-  Alarm.alarmRepeat(getTimeDayOfWeek(weekday()-1), hour(), minute(), second()+5, start_watering);
-  Alarm.alarmRepeat(getTimeDayOfWeek(weekday()-1), hour(), minute(), second()+10, stop_watering);
-  //Alarm.alarmRepeat(9, 30,30, start_watering);
-  //Alarm.alarmRepeat(9, 31,0, stop_watering);
+  int hours = hour();
+  int mins = minute();
+  
+  int secs = second() + 2;
+  int secs_close = secs + 5;
+  
+  /*Alarm.alarmRepeat(dowSunday, hours, mins, secs, start_watering);
+  Alarm.alarmRepeat(dowMonday, hours, mins, secs, start_watering);
+  Alarm.alarmRepeat(dowTuesday, hours, mins, secs, start_watering);
+  Alarm.alarmRepeat(dowWednesday, hours, mins, secs, start_watering);
+  Alarm.alarmRepeat(dowThursday, hours, mins, secs, start_watering);
+  Alarm.alarmRepeat(dowFriday, hours, mins, secs, start_watering);
+  Alarm.alarmRepeat(dowSaturday, hours, mins, secs, start_watering);*/
 }
 
 float h = -1;
@@ -182,7 +186,6 @@ uint16_t writeStrToBuf(char* from, uint8_t* to, uint16_t plen) {
 }
 char* respWrongFormat = "Error: Wrong format. Refer to \"help\"\n";
 void loop() {
-  //digitalClockDisplay();
   Alarm.delay(0); 
   if ((millis() - last_lcd_backlight) > 5000) {
     digitalWrite(LCD_BL, LOW);
@@ -315,27 +318,31 @@ void loop() {
             plen = writeStrToBuf(responseBuf, buf, plen);
           }
           else if (strncmp("set schedule", (char*)&(buf[dat_p]), 12) == 0) {
-            // set schedule monday 20:15 15
             char* params = (char *)&(buf[dat_p + 13]);
             char day[20];
-            unsigned int hour, min, duration;
-            char ret = sscanf(params, "%19s %d:%d %d", day, &hour, &min, &duration);
+            unsigned int hours, mins, duration;
+            char ret = sscanf(params, "%19s %d:%d %d", day, &hours, &mins, &duration);
             if (ret != 4) {
               plen = writeStrToBuf(respWrongFormat, buf, 0);
             }
             else {
               char dayIndex = Schedule::dayIndex(day);
+              lcd.setCursor(0, 0);
+              lcd.print((int)dayIndex);
+              Alarm.alarmRepeat(getTimeDayOfWeek(dayIndex), hour(), minute(), second()+2, start_watering);
+              Alarm.alarmRepeat(getTimeDayOfWeek(dayIndex), hour(), minute(), second()+7, stop_watering);
               if (dayIndex == -1) {
                 sprintf(responseBuf, "Day %s does not exist\n", day);
                 plen = writeStrToBuf(responseBuf, buf, 0);
               }
               else {
                 WaterRule& dayRule = schedule.get(dayIndex);
-                dayRule.set(hour, min, duration);
+                dayRule.set(hours, mins, duration);
                 dayRule.setEnabled(true);
                 schedule.storeDay(dayIndex);
-                resetAlarms();
-                sprintf(responseBuf, "Enabled rule: %s at %d:%d for %d\n", day, hour, min, duration);
+                //resetAlarms();
+                
+                sprintf(responseBuf, "Enabled rule: %s at %d:%d for %d\n", day, hours, mins, duration);
                 plen = writeStrToBuf(responseBuf, buf, 0);
               }
             }
