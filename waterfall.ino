@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <EEPROM.h>
 #include "Schedule.h"
+#include "stdio.h"
 
 #define BTN    2
 
@@ -19,6 +20,8 @@
 #define LCD_D6 6
 #define LCD_D7 7
 #define LCD_BL 0
+
+#define WATER_DURATION 36000 //ten mins
 
 static uint8_t mymac[6] = { 0x54, 0x55, 0x58, 0x10, 0x00, 0x24 };
 static uint8_t myip[4]  = { 192, 168, 1, 15 };
@@ -45,12 +48,13 @@ void lcd_backlight() {
   digitalWrite(LCD_BL, HIGH);
 }
 
-void start_watering() {
-  digitalWrite(A5, HIGH);
-}
-
 void stop_watering() {
   digitalWrite(A5, LOW);
+}
+
+void start_watering() {
+  Alarm.timerOnce(WATER_DURATION, stop_watering);
+  digitalWrite(A5, HIGH);
 }
 
 void setup() {
@@ -106,24 +110,32 @@ void setup() {
   last_lcd_backlight = millis();
   last_sensor_update = millis();
   
-  setTime(8,30,0,1,1,11); // set time to Saturday 8:29:00am Jan 1 2011
+  setTime(9,30,0,14,4,1988); // set time to Saturday 8:29:00am Jan 1 2011
   // create the alarms 
   resetAlarms();
-  //Alarm.timerRepeat(15, Repeats);            // timer for every 15 seconds    
-  //Alarm.timerOnce(10, OnceOnly);             // called once after 10 seconds 
 }
 
-void resetAlarms() {
-  Alarm.timerRepeat(5, start_watering);  // 8:30am every day
-  Alarm.timerRepeat(10, stop_watering);  // 8:30am every day  
+timeDayOfWeek_t getTimeDayOfWeek(int day) {
+  switch(day) {
+    case 1: return dowSunday;
+    case 2: return dowMonday;
+    case 3: return dowTuesday;
+    case 4: return dowWednesday;
+    case 5: return dowThursday;
+    case 6: return dowFriday;
+    case 7: return dowSaturday;  
+    default: return dowInvalid;
+  }
 }
 
-void Repeats(){
-  Serial.println("15 second timer");         
-}
+void resetAlarms() { 
+  for(int day=0; day < NUMOFDAYS; day++) {
+    WaterRule rule = schedule.get(day);
+    if(rule.isEnabled()) {
+      Alarm.alarmRepeat(getTimeDayOfWeek(day), rule.getHour(), rule.getMinute(), 0, start_watering);
+    }
+  }
 
-void OnceOnly(){
-  Serial.println("This timer only triggers once");  
 }
 
 float h = -1;
@@ -139,30 +151,16 @@ void digits(int digits, char *buf)
     sprintf(buf, "%d", digits);
 }
 
-/**
- *  parses time from a string and converts it to time_t
- */
 int parseTime(char *time_buf, int *hour, int *min, int *sec) {
-  int sz = strlen(time_buf); 
-  int i;
-  *hour = 0;
-  *min = 0;
-  *sec = 0;
-  //if(sz != 8) return -1;
-  //errno = 0; /* To distinguish success/failure after call */
-  //*hour = (int)strtol(time_buf, NULL, 10);
-  //if ((errno == ERANGE && (*hour == LONG_MAX || *hour == LONG_MIN)) || (errno != 0 && *hour == 0)) return -1;
-  //errno = 0; /* To distinguish success/failure after call */
-  //*min = (int)strtol(time_buf+3, NULL, 10);
-  //if ((errno == ERANGE && (*min == LONG_MAX || *min == LONG_MIN)) || (errno != 0 && *min == 0)) return -1;
-  //*sec = (int)strtol(time_buf+6, NULL, 10);
-  //errno = 0; /* To distinguish success/failure after call */
-  //if ((errno == ERANGE && (*sec == LONG_MAX || *sec == LONG_MIN)) || (errno != 0 && *sec == 0)) return -1;
-  *hour = atoi(time_buf);
-  *min = atoi(time_buf+3);
-  *sec = atoi(time_buf+6);
-  //FIXME: check for bad time format, syntax errors etc
-  return 1;
+  if(sscanf(time_buf, "%d:%d:%d", hour, min, sec) == EOF) return -1;
+  if(!(*hour <= 23 && *hour >= 0) || !(*min <= 60 && *min >= 0) || !(*sec <= 60 && *sec >= 0)) return -1; 
+  return 0;
+}
+
+int parseDate(char *date_buf, int *day, int *month, int *year) {
+  if(sscanf(date_buf, "%d/%d/%d", day, month, year) == EOF) return -1;
+  if(!(*day <= 31 && *day >= 1) || !(*month <= 12 && *month >= 1) || !(*year >= 2012)) return -1;  
+  return 0;
 }
 
 uint16_t writeStrToBuf(char* from, uint8_t* to, uint16_t plen) {
@@ -243,17 +241,18 @@ void loop() {
           }
           if (strncmp("help", (char *)&(buf[dat_p]), 4) == 0) {
               plen = es.ES_fill_tcp_data_p(buf, 0, PSTR("\
-               info              : get temperature and time information\n \
-              start watering    : open water valve\n \
-              stop watering     : close water valve\n \
-              set time xx:xx:xx : set system time\n \
-              exit              : exit telnet connection\n"));
+               info                : get temperature and time information\n \
+              start watering      : open water valve\n \
+              stop watering       : close water valve\n \
+              set time hh:mm:ss   : set system time\n \
+              set time dd:mm:yyyy : set system date\n \
+              exit                : exit telnet connection\n"));
           }
           else if (strncmp("info", (char *)&(buf[dat_p]), 4) == 0) {              
               digits(hour(), hours);
               digits(minute(), mins);
               digits(second(), secs);
-              sprintf(responseBuf, "Temp: %d\nHumi: %d\n%s:%s:%s", (int)t, (int)h, hours, mins, secs);
+              sprintf(responseBuf, "Temp: %d\nHumi: %d\n%s:%s:%s %d/%d/%d", (int)t, (int)h, hours, mins, secs, day(), month(), year());
               plen = es.ES_fill_tcp_data_p(buf, 0, PSTR(""));
               plen = writeStrToBuf(responseBuf, buf, plen);
               plen = es.ES_fill_tcp_data_p(buf, plen, PSTR("\n"));
@@ -269,17 +268,31 @@ void loop() {
           else if (strncmp("set time", (char *)&(buf[dat_p]), 8) == 0) {
             char *time_buf = (char *)&(buf[dat_p+9]);
             int hour, min, sec;
-            if (parseTime(time_buf, &hour, &min, &sec)) {
-              //sprintf(responseBuf, "You said:%s?", time_buf);
+            if (!parseTime(time_buf, &hour, &min, &sec)) {
               digits(hour, hours);
               digits(min, mins);
               digits(sec, secs);
-              setTime(hour,min,sec,1,1,11); //the data is reset, and wrong ofcourse, but probably no one will ever notice
+              setTime(hour,min,sec,day(),month(),year());
               resetAlarms();
               sprintf(responseBuf, "Time is set to %s:%s:%s", hours, mins, secs);
             }
             else {
-              sprintf(responseBuf, "(INVALID TIME)");
+              sprintf(responseBuf, "Time could not be set");
+            }
+            plen = es.ES_fill_tcp_data_p(buf, 0, PSTR(""));
+            plen = writeStrToBuf(responseBuf, buf, plen);
+            plen = es.ES_fill_tcp_data_p(buf, plen, PSTR("\n"));
+          }
+          else if (strncmp("set date", (char *)&(buf[dat_p]), 8) == 0) {
+            char *date_buf = (char *)&(buf[dat_p+9]);
+            int day, month, year;
+            if (!parseDate(date_buf, &day, &month, &year)) {
+              setTime(hour(),minute(),second(),day,month,year);
+              resetAlarms();
+              sprintf(responseBuf, "Date is set to %d/%d/%d", day, month, year);
+            }
+            else {
+              sprintf(responseBuf, "Date could not be set");
             }
             plen = es.ES_fill_tcp_data_p(buf, 0, PSTR(""));
             plen = writeStrToBuf(responseBuf, buf, plen);
