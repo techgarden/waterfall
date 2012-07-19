@@ -1,7 +1,7 @@
 
 #include "Schedule.h"
 
-char* days[] = { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" };
+char* days[] = { "sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday" };
 
 Schedule::Schedule(unsigned int address) {
   this->address = address;
@@ -23,6 +23,16 @@ void Schedule::fetch() {
 WaterRule& Schedule::get(Day day) {
   return rules[day];
 }
+
+char Schedule::dayIndex(char* day) {
+  for (byte i = 0; i < 7; i++) {
+    if (strcmp(days[i], day) == 0) {
+      return i;
+    }
+  }
+  return -1;
+}
+
 
 unsigned int Schedule::storeDay(Day day) {
   return rules[day].store(day * sizeof(WaterRule));

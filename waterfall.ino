@@ -58,6 +58,7 @@ void start_watering() {
 }
 
 void setup() {
+  Serial.begin(9600);
   schedule.fetch();
   pinMode(A5, OUTPUT);
   digitalWrite(A5, LOW);
@@ -171,7 +172,7 @@ uint16_t writeStrToBuf(char* from, uint8_t* to, uint16_t plen) {
   }
   return plen;
 }
-
+char* respWrongFormat = "Error: Wrong format. Refer to \"help\"\n";
 void loop() {
   //digitalClockDisplay();
   Alarm.delay(0); 
@@ -303,9 +304,52 @@ void loop() {
             plen = es.ES_fill_tcp_data_p(buf, 0, PSTR(""));
             plen = writeStrToBuf(responseBuf, buf, plen);
           }
-          else if (strncmp("set schedule ", (char*)&(buf[dat_p]), 9) == 0) {
-            char* params = (char *)&(buf[dat_p + 9]);
-            // moar
+          else if (strncmp("set schedule", (char*)&(buf[dat_p]), 12) == 0) {
+            // set schedule monday 20:15 15
+            char* params = (char *)&(buf[dat_p + 13]);
+            char day[20];
+            unsigned int hour, min, duration;
+            char ret = sscanf(params, "%19s %d:%d %d", day, &hour, &min, &duration);
+            if (ret != 4) {
+              plen = writeStrToBuf(respWrongFormat, buf, 0);
+            }
+            else {
+              char dayIndex = Schedule::dayIndex(day);
+              if (dayIndex == -1) {
+                sprintf(responseBuf, "Day %s does not exist\n", day);
+                plen = writeStrToBuf(responseBuf, buf, 0);
+              }
+              else {
+                WaterRule& dayRule = schedule.get(dayIndex);
+                dayRule.set(hour, min, duration);
+                dayRule.setEnabled(true);
+                schedule.storeDay(dayIndex);
+                sprintf(responseBuf, "Enabled rule: %s at %d:%d for %d\n", day, hour, min, duration);
+                plen = writeStrToBuf(responseBuf, buf, 0);
+              }
+            }
+          }
+          else if (strncmp("disable", (char *)&(buf[dat_p]), 7) == 0) {
+            char *params = (char *)&(buf[dat_p + 7]);
+            char day[20];
+            char ret = sscanf(params, "%19s", day);
+            if (ret != 1) {
+              plen = writeStrToBuf(respWrongFormat, buf, 0);
+            }
+            else {
+              char dayIndex = Schedule::dayIndex(day);
+              if (dayIndex == -1) {
+                sprintf(responseBuf, "Day %s does not exist\n\n", day);
+                plen = writeStrToBuf(responseBuf, buf, 0);
+              }
+              else {
+                WaterRule& dayRule = schedule.get(dayIndex);
+                dayRule.setEnabled(false);
+                schedule.storeDay(dayIndex);
+                sprintf(responseBuf, "Disabled day %s\n", day);
+                plen = writeStrToBuf(responseBuf, buf, 0);
+              }
+            }
           }
           else if (strncmp("exit", (char *)&(buf[dat_p]), 4) == 0) {
             plen = es.ES_fill_tcp_data_p(buf, 0, PSTR("goodbye  ;)\n"));
