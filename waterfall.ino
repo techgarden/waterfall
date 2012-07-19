@@ -53,7 +53,7 @@ void stop_watering() {
 }
 
 void start_watering() {
-  Alarm.timerOnce(WATER_DURATION, stop_watering);
+  //Alarm.timerOnce(WATER_DURATION, stop_watering);
   digitalWrite(A5, HIGH);
 }
 
@@ -118,13 +118,13 @@ void setup() {
 
 timeDayOfWeek_t getTimeDayOfWeek(int day) {
   switch(day) {
-    case 1: return dowSunday;
-    case 2: return dowMonday;
-    case 3: return dowTuesday;
-    case 4: return dowWednesday;
-    case 5: return dowThursday;
-    case 6: return dowFriday;
-    case 7: return dowSaturday;  
+    case 0: return dowSunday;
+    case 1: return dowMonday;
+    case 2: return dowTuesday;
+    case 3: return dowWednesday;
+    case 4: return dowThursday;
+    case 5: return dowFriday;
+    case 6: return dowSaturday;  
     default: return dowInvalid;
   }
 }
@@ -133,10 +133,18 @@ void resetAlarms() {
   for(int day=0; day < NUMOFDAYS; day++) {
     WaterRule rule = schedule.get(day);
     if(rule.isEnabled()) {
-      Alarm.alarmRepeat(getTimeDayOfWeek(day), rule.getHour(), rule.getMinute(), 0, start_watering);
+      //Alarm.alarmRepeat(9, 30,30, start_watering);
+      //Alarm.alarmRepeat(9, 31,0, start_watering);
+      //Alarm.alarmRepeat(getTimeDayOfWeek(day), rule.getHour(), rule.getMinute(), 0, start_watering);
+      //Alarm.alarmRepeat(getTimeDayOfWeek(day), rule.getHour(), rule.getMinute(), 10, stop_watering); //FIXME: make it real
     }
+    //Alarm.alarmRepeat(getTimeDayOfWeek(day), hour(), minute(), second()+5, start_watering);
+    //Alarm.alarmRepeat(getTimeDayOfWeek(day), hour(), minute(), second()+10, stop_watering);
   }
-
+  Alarm.alarmRepeat(getTimeDayOfWeek(weekday()-1), hour(), minute(), second()+5, start_watering);
+  Alarm.alarmRepeat(getTimeDayOfWeek(weekday()-1), hour(), minute(), second()+10, stop_watering);
+  //Alarm.alarmRepeat(9, 30,30, start_watering);
+  //Alarm.alarmRepeat(9, 31,0, stop_watering);
 }
 
 float h = -1;
@@ -253,7 +261,9 @@ void loop() {
               digits(hour(), hours);
               digits(minute(), mins);
               digits(second(), secs);
-              sprintf(responseBuf, "Temp: %d\nHumi: %d\n%s:%s:%s %d/%d/%d", (int)t, (int)h, hours, mins, secs, day(), month(), year());
+              //sprintf(responseBuf, "Temp: %d\nHumi: %d\n%s:%s:%s %d/%d/%d", (int)t, (int)h, hours, mins, secs, day(), month(), year());
+              sprintf(responseBuf, "Day%s", dayShortStr((weekday())));
+              //sprintf(responseBuf, "%s:%s:%s %s/%d/%d", (int)t, (int)h, hours, mins, secs, dayStr(day()), month(), year());
               plen = es.ES_fill_tcp_data_p(buf, 0, PSTR(""));
               plen = writeStrToBuf(responseBuf, buf, plen);
               plen = es.ES_fill_tcp_data_p(buf, plen, PSTR("\n"));
@@ -324,6 +334,7 @@ void loop() {
                 dayRule.set(hour, min, duration);
                 dayRule.setEnabled(true);
                 schedule.storeDay(dayIndex);
+                resetAlarms();
                 sprintf(responseBuf, "Enabled rule: %s at %d:%d for %d\n", day, hour, min, duration);
                 plen = writeStrToBuf(responseBuf, buf, 0);
               }
