@@ -16,6 +16,7 @@ public:
   unsigned int store();
   unsigned int storeDay(Day day);
   void toString(char* buf);
+  static char dayIndex(char* day);
 };
 
 #endif
