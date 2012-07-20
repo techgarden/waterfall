@@ -1,8 +1,8 @@
 #include "DHT.h"
-#include <LiquidCrystal.h>
-#include "etherShield.h"
 #include <Time.h>
 #include <TimeAlarms.h>
+#include <LiquidCrystal.h>
+#include "etherShield.h"
 #include <stdlib.h>
 #include <EEPROM.h>
 #include "Schedule.h"
@@ -26,14 +26,11 @@
 static uint8_t mymac[6] = { 0x54, 0x55, 0x58, 0x10, 0x00, 0x24 };
 static uint8_t myip[4]  = { 192, 168, 1, 15 };
 
-#define BUFFER_SIZE 500
+#define BUFFER_SIZE 300
 static uint8_t buf[BUFFER_SIZE+1];
 
-#define RESPONSE_BUF 500
+#define RESPONSE_BUF 350
 static char responseBuf[RESPONSE_BUF];
-
-#define STR_BUFFER_SIZE 22
-static char strbuf[STR_BUFFER_SIZE+1];
 
 EtherShield es = EtherShield();
 DHT dht(DHTPIN, DHTTYPE);
@@ -48,19 +45,12 @@ void lcd_backlight() {
   digitalWrite(LCD_BL, HIGH);
 }
 
-void stop_watering() {
-  digitalWrite(A5, LOW);
-}
-
-void start_watering() {
-  //Alarm.timerOnce(WATER_DURATION, stop_watering);
-  digitalWrite(A5, HIGH);
-}
-
 void setup() {
+  Serial.begin(9600);
   schedule.fetch();
-  pinMode(A5, OUTPUT);
-  digitalWrite(A5, LOW);
+  schedule.time(9, 30, 55, 18, 7, 2012);
+  pinMode(A4, OUTPUT);
+  digitalWrite(A4, LOW);
   // initialize enc28j60
   es.ES_enc28j60Init(mymac);
   // change clkout from 6.25MHz to 12.5MHz
@@ -107,48 +97,8 @@ void setup() {
   lcd.print("Temperature    C");
   lcd.setCursor(0, 1);
   lcd.print("Humidity       %");
-  last_lcd_backlight = millis();
-  last_sensor_update = millis();
-  
-  setTime(9,30,0,18,7,2012); // set time to Saturday 8:29:00am Jan 1 2011
-  // create the alarms 
-  resetAlarms();
-}
-
-timeDayOfWeek_t getTimeDayOfWeek(int day) {
-  switch(day) {
-    case 0: return dowSunday;
-    case 1: return dowMonday;
-    case 2: return dowTuesday;
-    case 3: return dowWednesday;
-    case 4: return dowThursday;
-    case 5: return dowFriday;
-    case 6: return dowSaturday;  
-    default: return dowInvalid;
-  }
-}
-
-void resetAlarms() { 
-  for(int day = 0; day < 7; day++) {
-    WaterRule& rule = schedule.get(day);
-    if(rule.isEnabled()) {
-
-    }
-    //Alarm.alarmRepeat(getTimeDayOfWeek(day), hour(), minute(), second()+2, start_watering);
-  }
-  int hours = hour();
-  int mins = minute();
-  
-  int secs = second() + 2;
-  int secs_close = secs + 5;
-  
-  /*Alarm.alarmRepeat(dowSunday, hours, mins, secs, start_watering);
-  Alarm.alarmRepeat(dowMonday, hours, mins, secs, start_watering);
-  Alarm.alarmRepeat(dowTuesday, hours, mins, secs, start_watering);
-  Alarm.alarmRepeat(dowWednesday, hours, mins, secs, start_watering);
-  Alarm.alarmRepeat(dowThursday, hours, mins, secs, start_watering);
-  Alarm.alarmRepeat(dowFriday, hours, mins, secs, start_watering);
-  Alarm.alarmRepeat(dowSaturday, hours, mins, secs, start_watering);*/
+  last_lcd_backlight = 0;
+  last_sensor_update = 0;
 }
 
 float h = -1;
@@ -172,7 +122,7 @@ int parseTime(char *time_buf, int *hour, int *min, int *sec) {
 
 int parseDate(char *date_buf, int *day, int *month, int *year) {
   if(sscanf(date_buf, "%d/%d/%d", day, month, year) == EOF) return -1;
-  if(!(*day <= 31 && *day >= 1) || !(*month <= 12 && *month >= 1) || !(*year >= 2012)) return -1;  
+  if(!(*day <= 31 && *day >= 1) || !(*month <= 12 && *month >= 1) || !(*year >= 2012)) return -1;
   return 0;
 }
 
@@ -184,7 +134,9 @@ uint16_t writeStrToBuf(char* from, uint8_t* to, uint16_t plen) {
   }
   return plen;
 }
+
 char* respWrongFormat = "Error: Wrong format. Refer to \"help\"\n";
+
 void loop() {
   Alarm.delay(0); 
   if ((millis() - last_lcd_backlight) > 5000) {
@@ -205,9 +157,6 @@ void loop() {
   }
       
   uint16_t plen, dat_p;
-  int8_t cmd;
-  byte on_off = 1;
-
   plen = es.ES_enc28j60PacketReceive(BUFFER_SIZE, buf);
 
   /*plen will ne unequal to zero if there is a valid packet (without crc error) */
@@ -260,62 +209,49 @@ void loop() {
               set time dd:mm:yyyy : set system date\n \
               exit                : exit telnet connection\n"));
           }
-          else if (strncmp("info", (char *)&(buf[dat_p]), 4) == 0) {              
-              digits(hour(), hours);
-              digits(minute(), mins);
-              digits(second(), secs);
-              //sprintf(responseBuf, "Temp: %d\nHumi: %d\n%s:%s:%s %d/%d/%d", (int)t, (int)h, hours, mins, secs, day(), month(), year());
-              sprintf(responseBuf, "Day%s", dayShortStr((weekday())));
-              //sprintf(responseBuf, "%s:%s:%s %s/%d/%d", (int)t, (int)h, hours, mins, secs, dayStr(day()), month(), year());
-              plen = es.ES_fill_tcp_data_p(buf, 0, PSTR(""));
-              plen = writeStrToBuf(responseBuf, buf, plen);
-              plen = es.ES_fill_tcp_data_p(buf, plen, PSTR("\n"));
+          else if (strncmp("info", (char *)&(buf[dat_p]), 4) == 0) {
+              sprintf(responseBuf,
+                  "Temp: %d\nHumi: %d\n%d:%d:%d %d/%d/%d\n",
+                  (int)t, (int)h,
+                  schedule.hour(), schedule.minute(), schedule.second(),
+                  schedule.day(), schedule.month(), schedule.year());
+              plen = writeStrToBuf(responseBuf, buf, 0);
           }
           else if (strncmp("start watering", (char *)&(buf[dat_p]), 14) == 0) {
-            digitalWrite(A5, HIGH);
+            digitalWrite(A4, HIGH);
             plen = es.ES_fill_tcp_data_p(buf, 0, PSTR("better hold on to your umbrella!\n"));
           }
           else if (strncmp("stop watering", (char *)&(buf[dat_p]), 13) == 0) {
-            digitalWrite(A5, LOW);
+            digitalWrite(A4, LOW);
             plen = es.ES_fill_tcp_data_p(buf, 0, PSTR("look at the rainbow!\n"));
           }
           else if (strncmp("set time", (char *)&(buf[dat_p]), 8) == 0) {
             char *time_buf = (char *)&(buf[dat_p+9]);
             int hour, min, sec;
             if (!parseTime(time_buf, &hour, &min, &sec)) {
-              digits(hour, hours);
-              digits(min, mins);
-              digits(sec, secs);
-              setTime(hour,min,sec,day(),month(),year());
-              resetAlarms();
-              sprintf(responseBuf, "Time is set to %s:%s:%s", hours, mins, secs);
+              schedule.time(hour, min, sec);
+              sprintf(responseBuf, "Time is set to %d:%d:%d\n", hour, min, sec);
             }
             else {
-              sprintf(responseBuf, "Time could not be set");
+              sprintf(responseBuf, "Time could not be set\n");
             }
-            plen = es.ES_fill_tcp_data_p(buf, 0, PSTR(""));
-            plen = writeStrToBuf(responseBuf, buf, plen);
-            plen = es.ES_fill_tcp_data_p(buf, plen, PSTR("\n"));
+            plen = writeStrToBuf(responseBuf, buf, 0);
           }
           else if (strncmp("set date", (char *)&(buf[dat_p]), 8) == 0) {
             char *date_buf = (char *)&(buf[dat_p+9]);
             int day, month, year;
-            if (!parseDate(date_buf, &day, &month, &year)) {
-              setTime(hour(),minute(),second(),day,month,year);
-              resetAlarms();
-              sprintf(responseBuf, "Date is set to %d/%d/%d", day, month, year);
+            if (parseDate(date_buf, &day, &month, &year) != -1) {
+              schedule.date(day, month, year);
+              sprintf(responseBuf, "Date is set to %d/%d/%d\n", day, month, year);
             }
             else {
-              sprintf(responseBuf, "Date could not be set");
+              sprintf(responseBuf, "Date could not be set\n");
             }
-            plen = es.ES_fill_tcp_data_p(buf, 0, PSTR(""));
-            plen = writeStrToBuf(responseBuf, buf, plen);
-            plen = es.ES_fill_tcp_data_p(buf, plen, PSTR("\n"));
+            plen = writeStrToBuf(responseBuf, buf, 0);
           }
           else if (strncmp("schedules", (char *)&(buf[dat_p]), 9) == 0) {
             schedule.toString(responseBuf);
-            plen = es.ES_fill_tcp_data_p(buf, 0, PSTR(""));
-            plen = writeStrToBuf(responseBuf, buf, plen);
+            plen = writeStrToBuf(responseBuf, buf, 0);
           }
           else if (strncmp("set schedule", (char*)&(buf[dat_p]), 12) == 0) {
             char* params = (char *)&(buf[dat_p + 13]);
@@ -327,10 +263,6 @@ void loop() {
             }
             else {
               char dayIndex = Schedule::dayIndex(day);
-              lcd.setCursor(0, 0);
-              lcd.print((int)dayIndex);
-              Alarm.alarmRepeat(getTimeDayOfWeek(dayIndex), hour(), minute(), second()+2, start_watering);
-              Alarm.alarmRepeat(getTimeDayOfWeek(dayIndex), hour(), minute(), second()+7, stop_watering);
               if (dayIndex == -1) {
                 sprintf(responseBuf, "Day %s does not exist\n", day);
                 plen = writeStrToBuf(responseBuf, buf, 0);
@@ -338,11 +270,8 @@ void loop() {
               else {
                 WaterRule& dayRule = schedule.get(dayIndex);
                 dayRule.set(hours, mins, duration);
-                dayRule.setEnabled(true);
-                schedule.storeDay(dayIndex);
-                //resetAlarms();
-                
-                sprintf(responseBuf, "Enabled rule: %s at %d:%d for %d\n", day, hours, mins, duration);
+                schedule.storeDay(dayIndex);                
+                sprintf(responseBuf, "Enabled rule: %s at %d:%d for %d minutes\n", day, hours, mins, duration);
                 plen = writeStrToBuf(responseBuf, buf, 0);
               }
             }

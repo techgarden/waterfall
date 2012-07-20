@@ -2,16 +2,21 @@
 #define WATERRULE_H
 
 #include "Arduino.h"
+#include <Time.h>
+#include <TimeAlarms.h>
 
 class WaterRule {
+  byte day;
   byte hour;
   byte minute;
   byte duration;
   byte enabled;
+  byte startAlarmId, stopAlarmId;
 public:
   WaterRule();
-  WaterRule(byte h, byte m, byte d);
+  void setDay(byte day);
   void set(byte h, byte m, byte d);
+  void createAlarms();
   unsigned int store(unsigned int address);
   void fetch(unsigned int address);
   byte getHour();
