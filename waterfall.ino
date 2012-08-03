@@ -27,7 +27,7 @@ static uint8_t mymac[6] = { 0x54, 0x55, 0x58, 0x10, 0x00, 0x24 };
 static uint8_t myip[4]  = { 192, 168, 1, 15 };
 
 #define BUFFER_SIZE 300
-static uint8_t buf[BUFFER_SIZE+1];
+static uint8_t buf[BUFFER_SIZE + 1];
 
 #define RESPONSE_BUF 350
 static char responseBuf[RESPONSE_BUF];
@@ -51,7 +51,6 @@ void setup() {
   schedule.time(9, 30, 55, 18, 7, 2012);
   pinMode(A4, OUTPUT);
   digitalWrite(A4, LOW);
-  // initialize enc28j60
   es.ES_enc28j60Init(mymac);
   // change clkout from 6.25MHz to 12.5MHz
   es.ES_enc28j60clkout(2);
@@ -62,31 +61,31 @@ void setup() {
   //
   // 0x880 is PHLCON LEDB=on, LEDA=on
   // enc28j60PhyWrite(PHLCON,0b0000 1000 1000 00 00);
-  es.ES_enc28j60PhyWrite(PHLCON,0x880);
+  es.ES_enc28j60PhyWrite(PHLCON, 0x880);
   delay(500);
   //
   // 0x990 is PHLCON LEDB=off, LEDA=off
   // enc28j60PhyWrite(PHLCON,0b0000 1001 1001 00 00);
-  es.ES_enc28j60PhyWrite(PHLCON,0x990);
+  es.ES_enc28j60PhyWrite(PHLCON, 0x990);
   delay(500);
   //
   // 0x880 is PHLCON LEDB=on, LEDA=on
   // enc28j60PhyWrite(PHLCON,0b0000 1000 1000 00 00);
-  es.ES_enc28j60PhyWrite(PHLCON,0x880);
+  es.ES_enc28j60PhyWrite(PHLCON, 0x880);
   delay(500);
   //
   // 0x990 is PHLCON LEDB=off, LEDA=off
   // enc28j60PhyWrite(PHLCON,0b0000 1001 1001 00 00);
-  es.ES_enc28j60PhyWrite(PHLCON,0x990);
+  es.ES_enc28j60PhyWrite(PHLCON, 0x990);
   delay(500);
   //
   // 0x476 is PHLCON LEDA=links status, LEDB=receive/transmit
   // enc28j60PhyWrite(PHLCON,0b0000 0100 0111 01 10);
-  es.ES_enc28j60PhyWrite(PHLCON,0x476);
+  es.ES_enc28j60PhyWrite(PHLCON, 0x476);
   delay(100);
 
   //init the ethernet/ip layer:
-  es.ES_init_ip_arp_udp_tcp(mymac,myip,81);
+  es.ES_init_ip_arp_udp_tcp(mymac, myip, 81);
 
 
   pinMode(BTN, INPUT);
@@ -103,8 +102,6 @@ void setup() {
 
 float h = -1;
 float t = -1;
-
-char hours[3], mins[3], secs[3];
 
 void digits(int digits, char *buf)
 {

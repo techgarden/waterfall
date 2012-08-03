@@ -1,0 +1,52 @@
+# Pin name action command file
+
+# Start of element J1
+ChangePinName(J1, 6, 6)
+ChangePinName(J1, 7, 7)
+ChangePinName(J1, 8, 8)
+ChangePinName(J1, 9, 9)
+ChangePinName(J1, 10, 10)
+ChangePinName(J1, 5, 5)
+ChangePinName(J1, 1, 1)
+ChangePinName(J1, 4, 4)
+ChangePinName(J1, 3, 3)
+ChangePinName(J1, 2, 2)
+
+# Start of element U2
+ChangePinName(U2, 3, 3)
+ChangePinName(U2, 2, 2)
+ChangePinName(U2, 1, 1)
+
+# Start of element U1
+ChangePinName(U1, unknown, unknown)
+ChangePinName(U1, unknown, unknown)
+ChangePinName(U1, unknown, unknown)
+ChangePinName(U1, 28, "(ADC5/SCL) PC5")
+ChangePinName(U1, 27, "(ADC4/SDA) PC4")
+ChangePinName(U1, 26, "(ADC3) PC3")
+ChangePinName(U1, 25, "(ADC2) PC2")
+ChangePinName(U1, 24, "(ADC1) PC1")
+ChangePinName(U1, 23, "(ADC0) PC0")
+ChangePinName(U1, 21, AREF)
+ChangePinName(U1, 20, AVCC)
+ChangePinName(U1, 19, "PB5 (SCK)")
+ChangePinName(U1, 18, "PB4 (MISO)")
+ChangePinName(U1, 17, "PB3 (MOSI/OC2)")
+ChangePinName(U1, 16, "PB2 (SS/OC1B)")
+ChangePinName(U1, 15, "PB1 (OC1A)")
+ChangePinName(U1, 14, "PB0 (ICP1)")
+ChangePinName(U1, 13, "PD7 (AIN1)")
+ChangePinName(U1, 12, "PD6 (AIN0)")
+ChangePinName(U1, 11, "PD5 (T1)")
+ChangePinName(U1, 10, "PB7 (XTAL2/TOSC2)")
+ChangePinName(U1, 9, "PB6 (XTAL1/OSC1)")
+ChangePinName(U1, 6, "PD4 (XCK/T0)")
+ChangePinName(U1, 5, "PD3 (INT1)")
+ChangePinName(U1, 4, "PD2 (INT0)")
+ChangePinName(U1, 3, "PD1 (TxD)")
+ChangePinName(U1, 2, "PD0 (RxD)")
+ChangePinName(U1, 1, "(RESET) PC6")
+
+# Start of element CONN_PWR
+ChangePinName(CONN_PWR, 2, 2)
+ChangePinName(CONN_PWR, 1, 1)
